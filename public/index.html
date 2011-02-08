@@ -63,6 +63,7 @@
           RESULTS_TEMPLATE = [
             "<div class='resultset'><a href='#' class='remove-resultset'>remove</a>", 
             "<p>Source URL: <a href='<%= source_url %>'><%= source_url %></a></p>",
+            "<p>Search URL: <a href='/?context_url=<%= source_url %>'>Search '<%= source_url %>' with FADS Toolset Keyword Extractor</a></p>",
             "<p>Keywords</p>",
             "<ul><%= results %></ul>",
             "<p>Retrieved at <%= search_time %>",

@@ -17,7 +17,7 @@ class GettextController < ApplicationController
       @urls = doc.xpath("//a/@href").map {|href|
         href.to_s
       }.select {|href|
-        outval = (/http/ =~ href && !seen.include?(href))
+        outval = (/^http/ =~ href && !seen.include?(href))
         seen << href
         outval
       }
