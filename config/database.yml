@@ -1,7 +1,8 @@
 development:
-  adapter: postgres
+  adapter: postgresql
   database: fads_toolset_dev
 
 test:
-  adapter: postgres
+  adapter: postgresql
   database: fads_toolset_test
+

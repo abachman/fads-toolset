@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Ruby on Rails: Welcome aboard</title>
-    <style type="text/css" media="screen">
-    </style>
+    <title>FADS Toolkit - Keyword Extractor</title>
+    <link rel='stylesheet' type='text/css' href='/stylesheets/reset.css' />
+    <link rel='stylesheet' type='text/css' href='/stylesheets/960.css' />
+    <link rel='stylesheet' type='text/css' href='/stylesheets/typography.css' />
 
     <script src='/javascripts/jquery.js'></script>
     <script src='/javascripts/underscore.js'></script>
@@ -45,49 +46,137 @@
       function escapeContext(text) {
         return text.
           replace(/"/g, "'").
-          replace(/\n/, ' ');
+          replace(/\n/g, ' ').
+          replace(/[^a-zA-Z ]/g, ' ');
+      }
+      
+      function message(text, reset) {
+        if (reset == true) {
+          $("#messages").html("");
+          $("#messages").show();
+        }
+
+        $('#messages').append($("<p></p>").text(text));
       }
 
+      var YQL_RESPONSE = null,
+          RESULTS_TEMPLATE = [
+            "<div>", 
+            "<p>Source URL: <a href='<%= source_url %>'><%= source_url %></a></p>",
+            "<p>Results</p>",
+            "<ul><%= results %></ul>",
+            "<p>Retrieved at <%= search_time %>",
+            "<p>Alternative URLS</p>",
+            "<ul><%= alternative_urls %></ul>",
+            "</div>"
+          ].join("\n"),
+          ALTERNATIVE_TEMPLATE = "<li><a href='/?context_url=<%= url %>' class='get-context-url'><%= url %></a></li>";
+
+      function getQueryVariable(variable) { 
+        var query = window.location.search.substring(1); 
+        var vars = query.split("&"); 
+        for (var i=0;i<vars.length;i++) { 
+          var pair = vars[i].split("="); 
+          if (pair[0] == variable) { 
+            return pair[1]; 
+          } 
+        } 
+        return '';
+      } 
+
       $(function () {
+        $('#context_url').val(getQueryVariable('context_url'));
+
+        $('.get-context-url').live('click', function (e) {
+          $('#context_url').val( $(e.target).text() );
+          $('#yql_termextract_form').submit()
+          return false;
+        });
+
         $('#yql_termextract_form').submit(function () {
+          message("Getting page contents from \"" + $("#context_url").val() + "\"...", true);
+
           // get text
           $.getJSON('/gettext', {uri: $("#context_url").val()}, 
             function (data) {
+              message("Got " + data.text.length + " characters of text. Getting keywords...");
               if (data.status == 'ok') {
+                console.log("sending along: " + escapeContext(data.text));
+
                 // submit to YQL            
-                var query = 'select * from search.termextract where context="<%= page_content %>"';
-                  
-                // $('<p></p>').text($('#yql_termextract_form').serialize());
-                $('#keyword_results').append();
+                var query = 'select * from search.termextract where context="<%= context_text %>"',
+                    q     = _.template(query, {context_text: escapeContext(data.text), query: $("#keyword_query").val() });
+
+                $.post("http://query.yahooapis.com/v1/public/yql", 
+                  { 
+                    q: q,
+                    format: 'json',
+                    diagnostics: false
+                  },
+                  function (yql_data) {
+                    YQL_RESPONSE = yql_data; // provide global namespace with raw YQL response
+                    console.log(yql_data);
+                    message("Got " + yql_data.query.results.Result.length + " results");
+                    if ($("#keyword_results").html().length > 1) $("#keyword_results").prepend("<hr />");
+                    $('#keyword_results').prepend(
+                      _.template(RESULTS_TEMPLATE, {
+                        source_url: $("#context_url").val(),
+                        results: "<li>" + yql_data.query.results.Result.join("</li><li>") + "</li>",
+                        alternative_urls: _.map(data.urls, function (url) {
+                          return _.template(ALTERNATIVE_TEMPLATE, {url: url})
+                        }).join(""),
+                        search_time: new Date()
+                      })
+                    );
+
+                    $('#messages').fadeOut(3000);
+                  },
+                  'jsonp'
+                );
               } else {
-                alert("ERROR [" + data.status.error.type + "] " + data.status.error.message);
+                alert("ERROR [" + data.error.error_type + "] " + data.error.message);
               }
             }
           );
-
-          // http://query.yahooapis.com/v1/public/yql
 
           return false;
         });
       });
 
     </script>
+
+    <style>
+      #messages {
+        margin-top: 32px;
+        background: #dedede;
+        padding: 8px;
+      }
+
+      #context_url {
+        width: 250px;
+      }
+
+    </style>
   </head>
   <body>
-    <h1>FADS Toolset</h1>
+    <div class="container_12">
+      <div class="grid_12">
+        <h1>FADS Toolset</h1>
+      </div>
 
-    <h3>Keyword extractor</h3>
-    <div>
-      <form id='yql_termextract_form' action=''>
-        <label for='keyword_query'>Query:</label>
-        <input type='text' id='keyword_query' name='keyword_query' />
-        <br />
-        <label for='context_url'>Context URL</label>
-        <input type='text' id='context_url' name='context_url' />
-        <br />
-        <input type='submit' value='Search' />
-      </form>
+      <div class="grid_5">
+        <h3>Keyword extractor</h3>
+        <form id='yql_termextract_form' action=''>
+          <label for='context_url'>Context URL:</label>
+          <input type='text' id='context_url' name='context_url' />
+          <br />
+          <input type='submit' value='Search' />
+        </form>
+        <div id="messages" style="display:none;">
+        </div>
+      </div>
+
+      <div class="grid_7" id='keyword_results'></div>
     </div>
-    <div id='keyword_results'></div>
   </body>
 </html>
