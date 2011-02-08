@@ -1,4 +1,5 @@
 FadsTools::Application.routes.draw do
+  match '/gettext.:format' => 'gettext#index'
   # The priority is based upon order of creation:
   # first created -> highest priority.
 
