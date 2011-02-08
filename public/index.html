@@ -61,9 +61,9 @@
 
       var YQL_RESPONSE = null,
           RESULTS_TEMPLATE = [
-            "<div>", 
+            "<div class='resultset'><a href='#' class='remove-resultset'>remove</a>", 
             "<p>Source URL: <a href='<%= source_url %>'><%= source_url %></a></p>",
-            "<p>Results</p>",
+            "<p>Keywords</p>",
             "<ul><%= results %></ul>",
             "<p>Retrieved at <%= search_time %>",
             "<p>Alternative URLS</p>",
@@ -81,16 +81,21 @@
             return pair[1]; 
           } 
         } 
-        return '';
+        return null;
       } 
 
       $(function () {
-        $('#context_url').val(getQueryVariable('context_url'));
 
+        // alternative url behavior
         $('.get-context-url').live('click', function (e) {
           $('#context_url').val( $(e.target).text() );
           $('#yql_termextract_form').submit()
           return false;
+        });
+
+        // remove resultset
+        $('.remove-resultset').live('click', function (e) {
+          $(e.target).parent().remove();
         });
 
         $('#yql_termextract_form').submit(function () {
@@ -117,7 +122,6 @@
                     YQL_RESPONSE = yql_data; // provide global namespace with raw YQL response
                     console.log(yql_data);
                     message("Got " + yql_data.query.results.Result.length + " results");
-                    if ($("#keyword_results").html().length > 1) $("#keyword_results").prepend("<hr />");
                     $('#keyword_results').prepend(
                       _.template(RESULTS_TEMPLATE, {
                         source_url: $("#context_url").val(),
@@ -141,8 +145,14 @@
 
           return false;
         });
-      });
 
+        // onload
+        var existing_url = getQueryVariable('context_url');
+        if (existing_url != null) {
+          $('#context_url').val(getQueryVariable('context_url'));
+          $('#yql_termextract_form').submit();
+        }
+      });
     </script>
 
     <style>
@@ -154,6 +164,15 @@
 
       #context_url {
         width: 250px;
+      }
+
+      .remove-resultset {
+        display: inline-block;
+        float: right;
+      }
+
+      .resultset {
+        border-bottom: 1px solid #666;
       }
 
     </style>
